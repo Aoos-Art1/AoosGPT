@@ -22,6 +22,16 @@ Knowledge uses bounded **lexical substring ranking**, not embeddings or vector s
 
 Untrusted documents and memory values enter a lower-priority user message, serialized as JSON. They are never interpolated into standing instructions. This reduces prompt-injection risk; it is not a claim that prompting can eliminate that risk. The model has no arbitrary network, database, shell, or transaction tool.
 
+## Reviewed skills and learning mode
+
+`skills.ts` contains nine reviewed, static reasoning workflows: six adapted from the supplied government-relations skill files and three local extensions for municipal/safety/health cases, case resolution, and source review. The original archives are reference material, not runtime dependencies. See [the source review](../../../../docs/SKILLS_REVIEW.md) for provenance, exclusions, and manual acceptance scenarios.
+
+The strict chat schema accepts optional `skill` (`auto` or a known ID) and `mode` (`answer` or `learn`). Omitting them preserves automatic routing and direct answers. Manual selection adds a workflow to relevant automatic matches; it does not disable other specialties or alter authorization. Common coordination and client communication rules always apply. Routing uses normalized Arabic/English keyword rules, not semantic classification. A short ambiguous follow-up can inherit matches from at most the two latest user turns already authorized for the current memory revision. Assistant messages, retrieved documents, and saved memories cannot select privileged policy.
+
+The provider assembles instructions from the reviewed registry and a server-generated Gregorian date in `Asia/Riyadh`. No free-form request, document, or memory text is interpolated into instructions. The date identifies the request, not a source verification. A documented future effective date is allowed; fabricated verification dates and uncalibrated confidence percentages are prohibited by the instructions.
+
+Learning mode requests a short explanation, an explicitly hypothetical example, a practice question, and feedback on the user's subsequent attempt. These settings apply to the next response and remain local to the open assistant view; they are not saved account preferences or a separate learning-progress record. The app does not train model weights. Skills do not enable browsing, source fetching, scheduling, alerts, external messages, or government transactions. Policy and mocked-provider tests validate request construction, not a guarantee of live model compliance or answer quality.
+
 ## Memory lifecycle
 
 Memory is off unless the user explicitly enables it. Only the dedicated POST endpoint saves exact user-submitted memory text, and only while enabled; PATCH on a memory ID permits an explicit edit under the same consent and ownership requirements. Turning memory off prevents its inclusion in model input; saved rows remain inspectable and deletable. Delete removes the row immediately. This implementation produces no embedding, summary, provider thread, cache copy, or training artifact from a memory.

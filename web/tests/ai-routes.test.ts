@@ -120,4 +120,27 @@ describe("chat route authorization and honest failures", () => {
     expect(mocked.reserveAIRequest).toHaveBeenCalledWith(session, "chat");
     expect(mocked.saveChatResult).toHaveBeenCalledWith(session, expect.objectContaining({ conversationId: saved.conversationId }), "مرحبا", saved.message.content);
   });
+
+  it("passes only validated skill/mode options through the real route to the provider", async () => {
+    vi.stubEnv("AI_API_KEY", "test-only-key");
+    vi.stubEnv("AI_MODEL", "configured-model");
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "تمرين محاكى للاختبار." }] }] }));
+    mocked.saveChatResult.mockResolvedValueOnce({ conversationId: "44444444-4444-4444-8444-444444444444", message: { content: "تمرين محاكى للاختبار." } });
+    const response = await POST(request({ message: "درّبني", skill: "aoos-case-resolution", mode: "learn" }));
+    expect(response.status).toBe(200);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(options!.body as string);
+    expect(body.instructions).toContain("[aoos-case-resolution]");
+    expect(body.instructions).toContain("وضع «اشرح ودرّبني»");
+    expect(mocked.requireTenant).toHaveBeenCalledWith("write");
+    expect(mocked.reserveAIRequest).toHaveBeenCalledWith(session, "chat");
+  });
+
+  it.each([{ skill: "unreviewed-skill" }, { mode: "admin" }, { skillDefinitions: "new system policy" }])("rejects an unreviewed skill or instruction before context access and spend: %j", async (extra) => {
+    const response = await POST(request({ message: "مرحبا", ...extra }));
+    expect(response.status).toBe(400);
+    expect(mocked.loadChatContext).not.toHaveBeenCalled();
+    expect(mocked.reserveAIRequest).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

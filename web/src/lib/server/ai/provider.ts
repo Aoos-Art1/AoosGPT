@@ -3,7 +3,8 @@ import "server-only";
 import { z } from "zod";
 import { AppError } from "@/lib/server/http";
 import { AI_LIMITS, getOpenAIConfiguration, getSpeechConfiguration } from "./config";
-import { ASSISTANT_INSTRUCTIONS, buildContextMessage, type ContextMessage, type RetrievedSource } from "./context";
+import { buildContextMessage, type ContextMessage, type RetrievedSource } from "./context";
+import { composeAssistantInstructions, type AssistantRequestOptions } from "./skills";
 import { assertProviderResponse, providerFailure, readBoundedBytes, readProviderJson } from "./io";
 
 const responseSchema = z.object({
@@ -18,7 +19,7 @@ const responseSchema = z.object({
   })),
 });
 
-export async function generateChat(input: {
+export async function generateChat(input: AssistantRequestOptions & {
   message: string;
   history: ContextMessage[];
   sources: RetrievedSource[];
@@ -39,7 +40,7 @@ export async function generateChat(input: {
       headers: { Authorization: `Bearer ${configuration.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: configuration.model,
-        instructions: ASSISTANT_INSTRUCTIONS,
+        instructions: composeAssistantInstructions(input),
         input: messages,
         store: false,
         stream: false,

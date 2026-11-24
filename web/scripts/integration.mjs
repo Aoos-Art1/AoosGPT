@@ -187,9 +187,12 @@ try {
   await expectDenied("/api/workspace",{cookie:individualCookie},401);
   pass("Logout revokes a replayed session cookie");
   if(browserMode) {
+    // Re-enable this synthetic account after the revocation assertion above so
+    // browser checks can exercise the genuine read-only UI with a fresh login.
+    assert.equal((await request(`/api/admin/users/${viewer.data.session.userId}`,{method:"PATCH",cookie:admin.cookie,body:{disabled:false}})).status,200);
     await mkdir(path.join(root,".local"),{recursive:true});
     const fixtureFile=path.join(root,".local","integration-fixtures.json");
-    await writeFile(fixtureFile,JSON.stringify({origin,email:a.email,adminEmail:"admin@validation.example",tenantId:a.data.session.tenantId,password:accountPassword}),{mode:0o600});
+    await writeFile(fixtureFile,JSON.stringify({origin,email:a.email,viewerEmail:viewer.email,adminEmail:"admin@validation.example",tenantId:a.data.session.tenantId,password:accountPassword}),{mode:0o600});
     const browser=spawn(process.execPath,["node_modules/@playwright/test/cli.js","test"],{cwd:root,env:{...env,AOOS_BASE_URL:origin,AOOS_TEST_FIXTURES:fixtureFile,AOOS_LOCAL_TLS:"1"},stdio:["ignore","pipe","pipe"]});
     let pending="",diagnostics="";
     browser.stdout.on("data",chunk=>{pending+=String(chunk);const lines=pending.split("\n");pending=lines.pop();for(const line of lines)console.log(scrub(line));});

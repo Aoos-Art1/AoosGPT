@@ -1,4 +1,4 @@
-# AoosGPT / سعود — Architecture and delivery plan
+# AoosGPT — Architecture and delivery plan
 
 ## Scope and source of truth
 
@@ -21,6 +21,7 @@ This `web` application extends the current `Aoos-Art1/AoosGPT` repository. The e
 5. Model endpoints and keys are server configuration. Retrieved documents are untrusted data; a model response cannot grant permissions or execute actions.
 6. Saved memory is opt-in, visible, editable/deletable. This is retrieval of preferences, not autonomous training of a foundation model.
 7. Provider configuration is reported honestly. No fake assistant response, regulatory certification, integration success, or Saudi data-residency claim is inferred from a successful build.
+8. Reviewed skill instructions live in a static server registry. Clients select only an allowlisted skill ID and answer/learn mode. Keyword routing can combine domains; untrusted documents and memory never become privileged instructions. Skills provide methodology, not external tools or official legal evidence. See [skills and legacy reference review](SKILLS_REVIEW.md).
 
 ## Delivery sequence
 

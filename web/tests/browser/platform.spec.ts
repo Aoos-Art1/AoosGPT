@@ -3,7 +3,7 @@ import { readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 const sections = ["dashboard", "assistant", "history", "letters", "calculators", "compliance", "hiring", "platforms", "company", "settings"];
-const fixture = process.env.AOOS_TEST_FIXTURES ? JSON.parse(readFileSync(process.env.AOOS_TEST_FIXTURES, "utf8")) as { email: string; adminEmail: string; tenantId: string; password: string } : null;
+const fixture = process.env.AOOS_TEST_FIXTURES ? JSON.parse(readFileSync(process.env.AOOS_TEST_FIXTURES, "utf8")) as { email: string; viewerEmail?: string; adminEmail: string; tenantId: string; password: string } : null;
 
 async function captureScreenshot(page: Page, name: string, project: string) {
   const directory = path.resolve("docs/screenshots");
@@ -28,14 +28,21 @@ async function captureScreenshot(page: Page, name: string, project: string) {
   }
 }
 
-async function login(page: Page) {
+async function login(page: Page, email = fixture?.email) {
   if (!fixture) throw new Error("Use npm run test:integration -- --browser for authenticated browser validation.");
   await page.goto("/login/company");
-  await page.getByLabel("البريد الإلكتروني", { exact: true }).fill(fixture.email);
+  await page.getByLabel("البريد الإلكتروني", { exact: true }).fill(email || fixture.email);
   await page.getByLabel("كلمة المرور", { exact: true }).fill(fixture.password);
   await page.getByRole("button", { name: "تسجيل الدخول", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/dashboard$/);
   await expect(page.locator("main h1")).toContainText("حيّاك");
+}
+
+async function expectViewportFits(page: Page) {
+  const widths = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, layout: window.innerWidth }));
+  const expectedWidth = page.viewportSize()!.width;
+  expect(widths.content, "Assistant content must remain inside the configured viewport").toBeLessThanOrEqual(expectedWidth + 1);
+  expect(widths.layout, "Assistant controls must not enlarge the mobile layout viewport").toBeLessThanOrEqual(expectedWidth + 1);
 }
 
 test("all ten RTL destinations render without page errors or horizontal overflow", async ({ page }, info) => {
@@ -85,7 +92,7 @@ test("navigation, search and focus work with keyboard and touch", async ({ page 
     await sidebar.getByRole("link", { name: "بيانات المنشأة", exact: true }).click();
     await expect(page).toHaveURL(/\/preview\/company$/);
     await expect(page.locator("main h1")).toHaveText("بيانات المنشأة");
-    const search = page.getByRole("dialog", { name: "البحث في أقسام سعود" });
+    const search = page.getByRole("dialog", { name: "البحث في أقسام AoosGPT" });
     // Confirm the client is interactive before exercising a global shortcut.
     await page.getByRole("button", { name: "البحث في الأقسام" }).click();
     await expect(search).toBeVisible();
@@ -118,6 +125,141 @@ test("calculators compute user inputs and the preview sends no business writes",
   await page.reload();
   await expect(page.getByText("مهمة معاينة مؤقتة", { exact: true })).toBeHidden();
   expect(writes).toEqual([]);
+});
+
+test("skill examples preserve the draft, keep teaching mode and never auto-send in the RTL preview", async ({ page }) => {
+  const chatRequests: string[] = [];
+  page.on("request", (request) => { if (new URL(request.url()).pathname === "/api/chat") chatRequests.push(request.method()); });
+  await page.goto("/preview/assistant");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  const skill = page.getByLabel("مجال المساعدة", { exact: true });
+  const mode = page.getByLabel("أسلوب المساعدة", { exact: true });
+  const composer = page.getByRole("textbox", { name: "رسالتك إلى AoosGPT", exact: true });
+  await expect(skill).toHaveValue("auto");
+  await expect(mode).toHaveValue("answer");
+  await mode.selectOption("learn");
+  await composer.fill("أريد استخدام حالة افتراضية للتدرب.");
+  await page.getByRole("button", { name: "استعراض المهارات", exact: true }).click();
+  const library = page.getByRole("region", { name: "دليل مهارات AoosGPT", exact: true });
+  await expect(library).toBeVisible();
+  await expect(library.getByRole("article")).toHaveCount(9);
+  await expect(page.getByRole("button", { name: "العودة إلى المحادثة", exact: true })).toHaveAttribute("aria-expanded", "true");
+  await expectViewportFits(page);
+  await library.getByRole("button", { name: "استخدم مثال حل الحالات والتصعيد", exact: true }).click();
+  await expect(skill).toHaveValue("aoos-case-resolution");
+  await expect(mode).toHaveValue("learn");
+  await expect(library).toBeHidden();
+  await expect(composer).toBeFocused();
+  await expect(composer).toHaveValue(/^أريد استخدام حالة افتراضية للتدرب\.\n\nلدي معاملة متعثرة/);
+  expect(chatRequests).toEqual([]);
+  await expectViewportFits(page);
+
+  const longDraft = "س".repeat(7995);
+  await composer.fill(longDraft);
+  await page.getByRole("button", { name: "استعراض المهارات", exact: true }).click();
+  await library.getByRole("button", { name: "استخدم مثال العمل والالتزام", exact: true }).click();
+  await expect(composer).toHaveValue(longDraft);
+  await expect(skill).toHaveValue("aoos-case-resolution");
+  await expect(page.getByText("المسودة طويلة لإضافة المثال. اختصرها أو انسخ ما تحتاجه قبل المحاولة.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "العودة إلى المحادثة", exact: true }).click();
+  await composer.fill("سؤال للمعاينة فقط");
+  await page.getByRole("button", { name: "إرسال الرسالة", exact: true }).click();
+  await expect(page.getByText("المعاينة لا تتصل بنموذج ذكاء اصطناعي. سجّل الدخول إلى مساحة عمل مهيأة لإرسال الرسائل.", { exact: true })).toBeVisible();
+  expect(chatRequests).toEqual([]);
+  await expect(page.locator(".message-assistant")).toHaveCount(0);
+});
+
+test("mocked chat sends the current skill and mode and safely renders structured replies", async ({ page }) => {
+  test.skip(!fixture, "Disposable PostgreSQL fixture is supplied by the integration runner; model replies are mocked.");
+  const requests: Record<string, unknown>[] = [];
+  const mediaRequests: string[] = [];
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("request", (request) => { if (request.url().includes("tracking.invalid")) mediaRequests.push(request.url()); });
+  await page.route("https://tracking.invalid/**", (route) => route.abort());
+  await page.route("**/api/capabilities", (route) => route.fulfill({ json: { chat: true, transcription: false, speech: false, speechLocale: null } }));
+  let releaseReply = () => {};
+  const pendingReply = new Promise<void>((resolve) => { releaseReply = resolve; });
+  const markdown = [
+    "## مثال تدريبي",
+    "| الخطوة | الدليل | الملاحظة |\n| --- | --- | --- |\n| استكمال البيانات | مستند اصطناعي | يحتاج مراجعة |",
+    "[مصدر للتجربة](https://example.gov.sa/guide)",
+    "[رابط غير آمن](javascript:alert%281%29)",
+    "![صورة خارجية](https://tracking.invalid/pixel)",
+    '<script>window.__aoosUnsafeMarkdown = true</script>',
+    '<img src="https://tracking.invalid/raw" onerror="window.__aoosUnsafeMarkdown = true">',
+    "```text\n" + "code_".repeat(200) + "\n```",
+  ].join("\n\n");
+  await page.route("**/api/chat", async (route) => {
+    requests.push(route.request().postDataJSON() as Record<string, unknown>);
+    const replyIndex = requests.length;
+    if (replyIndex === 1) await pendingReply;
+    await route.fulfill({ json: { conversationId: "11111111-1111-4111-8111-111111111111", message: { id: `mocked-reply-${replyIndex}`, role: "assistant", content: replyIndex === 1 ? markdown : "إجابة اختبارية ثانية بعد تغيير الاختيار.", citations: [], createdAt: "2026-01-01T00:00:00.000Z" } } });
+  });
+  await login(page);
+  await page.goto("/app/assistant");
+  const skill = page.getByLabel("مجال المساعدة", { exact: true });
+  const mode = page.getByLabel("أسلوب المساعدة", { exact: true });
+  const composer = page.getByRole("textbox", { name: "رسالتك إلى AoosGPT", exact: true });
+  await expect(page.getByText("الخدمة مهيأة", { exact: true })).toBeVisible();
+  await skill.selectOption("aoos-labor-compliance");
+  await mode.selectOption("learn");
+  await composer.fill("اشرح لي طريقة مراجعة حالة افتراضية");
+  try {
+    await page.getByRole("button", { name: "إرسال الرسالة", exact: true }).click();
+    await expect.poll(() => requests.length).toBe(1);
+    expect(requests[0]).toEqual({ message: "اشرح لي طريقة مراجعة حالة افتراضية", skill: "aoos-labor-compliance", mode: "learn" });
+    await expect(skill).toBeDisabled();
+    await expect(mode).toBeDisabled();
+    await expect(composer).toBeDisabled();
+  } finally {
+    releaseReply();
+  }
+  const reply = page.locator(".assistant-markdown").first();
+  await expect(reply.getByRole("heading", { name: "مثال تدريبي", level: 3 })).toBeVisible();
+  await expect(reply.getByRole("table")).toHaveCount(1);
+  await expect(reply.getByRole("region", { name: "جدول في إجابة AoosGPT" })).toHaveAttribute("tabindex", "0");
+  const source = reply.getByRole("link", { name: "مصدر للتجربة", exact: true });
+  await expect(source).toHaveAttribute("href", "https://example.gov.sa/guide");
+  await expect(source).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(source).toHaveAttribute("target", "_blank");
+  await expect(reply.getByRole("link", { name: "رابط غير آمن", exact: true })).toHaveCount(0);
+  await expect(reply.locator("img,script,iframe")).toHaveCount(0);
+  expect(await page.evaluate(() => Object.prototype.hasOwnProperty.call(window, "__aoosUnsafeMarkdown"))).toBe(false);
+  expect(mediaRequests).toEqual([]);
+  await expectViewportFits(page);
+
+  await skill.selectOption("aoos-case-resolution");
+  await mode.selectOption("answer");
+  await composer.fill("أريد إجابة مباشرة الآن");
+  await page.getByRole("button", { name: "إرسال الرسالة", exact: true }).click();
+  await expect(page.getByText("إجابة اختبارية ثانية بعد تغيير الاختيار.", { exact: true })).toBeVisible();
+  expect(requests[1]).toEqual({ message: "أريد إجابة مباشرة الآن", skill: "aoos-case-resolution", mode: "answer", conversationId: "11111111-1111-4111-8111-111111111111" });
+  await expect(page.locator(".message-assistant")).toHaveCount(2);
+  expect(errors).toEqual([]);
+});
+
+test("read-only viewers can browse skills without editing drafts or sending requests", async ({ page }) => {
+  test.skip(!fixture?.viewerEmail, "Disposable read-only viewer fixture is supplied by the integration runner.");
+  const chatRequests: string[] = [];
+  page.on("request", (request) => { if (new URL(request.url()).pathname === "/api/chat") chatRequests.push(request.method()); });
+  await page.route("**/api/capabilities", (route) => route.fulfill({ json: { chat: true, transcription: false, speech: false, speechLocale: null } }));
+  await login(page, fixture!.viewerEmail);
+  await page.goto("/app/assistant");
+  await expect(page.getByLabel("مجال المساعدة", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("أسلوب المساعدة", { exact: true })).toBeDisabled();
+  await expect(page.getByRole("textbox", { name: "رسالتك إلى AoosGPT", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "إرسال الرسالة", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "استعراض المهارات", exact: true }).click();
+  const library = page.getByRole("region", { name: "دليل مهارات AoosGPT", exact: true });
+  await expect(library).toBeVisible();
+  const examples = library.getByRole("button", { name: /^استخدم مثال / });
+  await expect(examples).toHaveCount(9);
+  for (const button of await examples.all()) await expect(button).toBeDisabled();
+  await expectViewportFits(page);
+  await page.getByRole("button", { name: "العودة إلى المحادثة", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "رسالتك إلى AoosGPT", exact: true })).toHaveValue("");
+  expect(chatRequests).toEqual([]);
 });
 
 test("admin can search an existing company, invite its member and revoke the link", async ({ page }, info) => {

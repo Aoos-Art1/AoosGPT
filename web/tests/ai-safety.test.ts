@@ -149,7 +149,9 @@ describe("provider boundary (mocked network only)", () => {
     expect(url).toBe("https://api.openai.com/v1/responses");
     const body = JSON.parse(request.body as string);
     expect(body).toMatchObject({ store: false, stream: false, max_output_tokens: 1_200 });
-    expect(body.instructions).toBe(ASSISTANT_INSTRUCTIONS);
+    expect(body.instructions).toContain(ASSISTANT_INSTRUCTIONS);
+    expect(body.instructions).not.toContain(source.content);
+    expect(body.instructions).not.toContain("untrusted preference");
     expect(body.input[0].role).toBe("user");
     expect(body.input[0].content).toContain(source.content);
     expect(body).not.toHaveProperty("tools");

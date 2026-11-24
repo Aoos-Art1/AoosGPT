@@ -17,7 +17,7 @@ export async function POST(request: Request): Promise<Response> {
     getOpenAIConfiguration("chat");
     const context = await loadChatContext(session, input.message, input.conversationId);
     await reserveAIRequest(session, "chat");
-    const text = await generateChat({ ...context, message: input.message, signal: request.signal });
+    const text = await generateChat({ ...context, message: input.message, skill: input.skill, mode: input.mode, signal: request.signal });
     const saved = await saveChatResult(session, context, input.message, text);
     return privateJson(saved);
   } catch (error) {

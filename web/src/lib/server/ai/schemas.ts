@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ASSISTANT_MODES, ASSISTANT_SKILL_IDS } from "@/lib/assistant-skills";
 import { AppError } from "@/lib/server/http";
 
 const text = (maximum: number) => z.string().trim().min(1).max(maximum).refine((value) => !value.includes("\0"), "النص يحتوي على محارف غير صالحة.");
@@ -6,6 +7,8 @@ const text = (maximum: number) => z.string().trim().min(1).max(maximum).refine((
 export const chatSchema = z.object({
   message: text(8_000),
   conversationId: z.uuid().optional(),
+  skill: z.enum(["auto", ...ASSISTANT_SKILL_IDS]).optional(),
+  mode: z.enum(ASSISTANT_MODES).optional(),
 }).strict();
 
 export const knowledgeSchema = z.object({

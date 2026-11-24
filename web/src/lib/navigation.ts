@@ -2,7 +2,7 @@ import type { Section } from "@/lib/contracts";
 
 export const NAVIGATION: { id: Section; label: string; description: string; group: "workspace" | "organization" }[] = [
   { id: "dashboard", label: "لوحة التحكم", description: "نظرة شاملة على أعمالك", group: "workspace" },
-  { id: "assistant", label: "المساعد الذكي", description: "مساحة محادثة سعود", group: "workspace" },
+  { id: "assistant", label: "المساعد الذكي", description: "مساحة محادثة AoosGPT", group: "workspace" },
   { id: "history", label: "سجل المحادثات", description: "ارجع إلى محادثاتك السابقة", group: "workspace" },
   { id: "letters", label: "الخطابات والمستندات", description: "صياغة خطاباتك وحفظها", group: "workspace" },
   { id: "calculators", label: "الحاسبات", description: "حسابات واضحة بمدخلاتك", group: "workspace" },

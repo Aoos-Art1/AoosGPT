@@ -12,7 +12,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
 });
 
 export function Brand({ compact = false, href = "/" }: { compact?: boolean; href?: string }) {
-  return <Link href={href} className={`brand ${compact ? "brand-compact" : ""}`} aria-label="سعود — الصفحة الرئيسية"><span className="brand-mark" aria-hidden="true"><Sparkles size={24} strokeWidth={1.6} /></span><span><strong>سعود<span className="brand-dot">.</span></strong>{!compact && <small>مساعدك للأعمال الحكومية</small>}</span></Link>;
+  return <Link href={href} className={`brand ${compact ? "brand-compact" : ""}`} aria-label="AoosGPT — الصفحة الرئيسية"><span className="brand-mark" aria-hidden="true"><Sparkles size={24} strokeWidth={1.6} /></span><span><strong dir="ltr" style={{ fontSize: compact ? 24 : 26 }}>AoosGPT<span className="brand-dot">.</span></strong>{!compact && <small>مساعدك للأعمال الحكومية</small>}</span></Link>;
 }
 
 export function Badge({ children, color = "green" }: { children: ReactNode; color?: "green" | "gold" | "gray" }) { return <span className={`badge badge-${color}`}>{children}</span>; }
