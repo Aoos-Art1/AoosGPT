@@ -132,8 +132,8 @@ test("skill examples preserve the draft, keep teaching mode and never auto-send 
   page.on("request", (request) => { if (new URL(request.url()).pathname === "/api/chat") chatRequests.push(request.method()); });
   await page.goto("/preview/assistant");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  const skill = page.getByLabel("مجال المساعدة", { exact: true });
-  const mode = page.getByLabel("أسلوب المساعدة", { exact: true });
+  const skill = page.getByRole("combobox", { name: "مجال المساعدة", exact: true });
+  const mode = page.getByRole("combobox", { name: "أسلوب المساعدة", exact: true });
   const composer = page.getByRole("textbox", { name: "رسالتك إلى AoosGPT", exact: true });
   await expect(skill).toHaveValue("auto");
   await expect(mode).toHaveValue("answer");
@@ -198,8 +198,8 @@ test("mocked chat sends the current skill and mode and safely renders structured
   });
   await login(page);
   await page.goto("/app/assistant");
-  const skill = page.getByLabel("مجال المساعدة", { exact: true });
-  const mode = page.getByLabel("أسلوب المساعدة", { exact: true });
+  const skill = page.getByRole("combobox", { name: "مجال المساعدة", exact: true });
+  const mode = page.getByRole("combobox", { name: "أسلوب المساعدة", exact: true });
   const composer = page.getByRole("textbox", { name: "رسالتك إلى AoosGPT", exact: true });
   await expect(page.getByText("الخدمة مهيأة", { exact: true })).toBeVisible();
   await skill.selectOption("aoos-labor-compliance");
@@ -246,8 +246,8 @@ test("read-only viewers can browse skills without editing drafts or sending requ
   await page.route("**/api/capabilities", (route) => route.fulfill({ json: { chat: true, transcription: false, speech: false, speechLocale: null } }));
   await login(page, fixture!.viewerEmail);
   await page.goto("/app/assistant");
-  await expect(page.getByLabel("مجال المساعدة", { exact: true })).toBeDisabled();
-  await expect(page.getByLabel("أسلوب المساعدة", { exact: true })).toBeDisabled();
+  await expect(page.getByRole("combobox", { name: "مجال المساعدة", exact: true })).toBeDisabled();
+  await expect(page.getByRole("combobox", { name: "أسلوب المساعدة", exact: true })).toBeDisabled();
   await expect(page.getByRole("textbox", { name: "رسالتك إلى AoosGPT", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "إرسال الرسالة", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "استعراض المهارات", exact: true }).click();
