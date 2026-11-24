@@ -69,6 +69,10 @@ test("all ten RTL destinations render without page errors or horizontal overflow
     const expectedWidth = page.viewportSize()!.width;
     expect(widths.content, `${section} content must fit the configured viewport`).toBeLessThanOrEqual(expectedWidth + 1);
     expect(widths.layout, `${section} must not enlarge the mobile layout viewport`).toBeLessThanOrEqual(expectedWidth + 1);
+    if (section === "assistant") {
+      await expect(page.locator(".assistant-emblem")).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole("heading", { name: "حيّاك، وش ننجز اليوم؟", exact: true })).toBeInViewport({ ratio: 1 });
+    }
     if (["dashboard", "assistant"].includes(section)) {
       await captureScreenshot(page, section, info.project.name);
     }
@@ -236,6 +240,11 @@ test("mocked chat sends the current skill and mode and safely renders structured
   await expect(page.getByText("إجابة اختبارية ثانية بعد تغيير الاختيار.", { exact: true })).toBeVisible();
   expect(requests[1]).toEqual({ message: "أريد إجابة مباشرة الآن", skill: "aoos-case-resolution", mode: "answer", conversationId: "11111111-1111-4111-8111-111111111111" });
   await expect(page.locator(".message-assistant")).toHaveCount(2);
+  await expect(page.getByText("إجابة اختبارية ثانية بعد تغيير الاختيار.", { exact: true })).toBeInViewport({ ratio: 1 });
+  await page.getByRole("button", { name: "محادثة جديدة", exact: true }).click();
+  await expect(page.locator(".message-assistant")).toHaveCount(0);
+  await expect(page.locator(".assistant-emblem")).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("heading", { name: "حيّاك، وش ننجز اليوم؟", exact: true })).toBeInViewport({ ratio: 1 });
   expect(errors).toEqual([]);
 });
 
