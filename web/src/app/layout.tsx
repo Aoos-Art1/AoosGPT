@@ -7,7 +7,7 @@ import "@fontsource/tajawal/500.css";
 import "@fontsource/tajawal/700.css";
 import "./globals.css";
 
-export const metadata: Metadata = { title: { default: "سعود | مساعدك للأعمال الحكومية", template: "%s | سعود" }, description: "مساحة عربية لإدارة أعمال المنشأة، والمستندات، والمتابعة، والمحادثة مع سعود.", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { default: "سعود | مساعدك للأعمال الحكومية", template: "%s | سعود" }, description: "مساحة عربية لإدارة أعمال المنشأة، والمستندات، والمتابعة، والمحادثة مع سعود.", icons: { icon: { url: "/icon.svg", type: "image/svg+xml" } }, robots: { index: false, follow: false } };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0A1511" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="ar" dir="rtl"><body>{children}</body></html>; }

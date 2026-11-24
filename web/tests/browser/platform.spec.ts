@@ -41,12 +41,22 @@ async function login(page: Page) {
 test("all ten RTL destinations render without page errors or horizontal overflow", async ({ page }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("console", (message) => { if (message.type() === "error") errors.push(`${message.text()} (${message.location().url || "unknown source"})`); });
+  page.on("response", (response) => {
+    if (response.status() >= 400) errors.push(`HTTP ${response.status()} ${new URL(response.url()).pathname}`);
+  });
   for (const section of sections) {
     await page.goto(`/preview/${section}`);
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator(".demo-banner")).toContainText("البيانات افتراضية");
+    if (section === "dashboard") {
+      const icon = page.locator('link[rel="icon"]');
+      await expect(icon).toHaveAttribute("href", "/icon.svg");
+      const asset = await page.request.get((await icon.getAttribute("href"))!);
+      expect(asset.ok()).toBe(true);
+      expect(asset.headers()["content-type"]).toContain("image/svg+xml");
+    }
     await page.evaluate(() => document.fonts.ready);
     const widths = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, layout: window.innerWidth }));
     const expectedWidth = page.viewportSize()!.width;
