@@ -1,0 +1,23 @@
+{
+  servers {
+    timeouts {
+      read_header 10s
+      read_body 30s
+      idle 2m
+    }
+  }
+}
+
+{$APP_ORIGIN} {
+  request_body {
+    max_size 2200KB
+  }
+  header Strict-Transport-Security "max-age=31536000"
+  reverse_proxy web:3000 {
+    # Dedicated trust signal: overwrite any value supplied by the browser.
+    header_up X-Aoos-Client-IP {http.request.remote.host}
+    # Keep conventional forwarding for Next.js; the limiter does not trust it.
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up -X-Real-IP
+  }
+}

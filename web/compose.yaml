@@ -1,0 +1,68 @@
+services:
+  database:
+    image: postgres:18-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aoos
+      POSTGRES_USER: aoos_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?Set DB_OWNER_PASSWORD in a private env file}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aoos_owner -d aoos"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    build:
+      context: .
+      target: tools
+    profiles: ["tools"]
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://aoos_owner:${DB_OWNER_PASSWORD:?Set DB_OWNER_PASSWORD}@database:5432/aoos
+      DATABASE_URL: postgresql://aoos_runtime:${DB_RUNTIME_PASSWORD:?Set DB_RUNTIME_PASSWORD}@database:5432/aoos
+    depends_on:
+      database:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set the public HTTPS origin}
+      DATABASE_URL: postgresql://aoos_runtime:${DB_RUNTIME_PASSWORD:?Set DB_RUNTIME_PASSWORD}@database:5432/aoos
+      TRUST_PROXY_HEADERS: "true"
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_TRANSCRIPTION_MODEL: ${AI_TRANSCRIPTION_MODEL:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      AZURE_SPEECH_KEY: ${AZURE_SPEECH_KEY:-}
+      AZURE_SPEECH_REGION: ${AZURE_SPEECH_REGION:-}
+    expose:
+      - "3000"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  ingress:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set the public HTTPS origin}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:

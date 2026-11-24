@@ -1,0 +1,55 @@
+{
+  "name": "aoosgpt-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.16 <25"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build && node scripts/copy-assets.mjs",
+    "start": "node --env-file-if-exists=.env --env-file-if-exists=.env.local .next/standalone/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "node scripts/integration.mjs --browser",
+    "test:integration": "node scripts/integration.mjs",
+    "test:production": "node scripts/integration.mjs --production",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "admin:create": "tsx scripts/create-admin.ts"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-sans-arabic": "^5.2.0",
+    "@fontsource/tajawal": "^5.2.0",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "14.14.0",
+    "lucide-react": "^1.44.0",
+    "next": "16.4.6",
+    "pg": "^8.16.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "server-only": "0.0.1",
+    "tailwind-merge": "^3.3.0",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "embedded-postgres": "19.0.0-beta.20",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.0"
+  }
+}

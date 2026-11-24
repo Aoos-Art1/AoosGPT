@@ -1,0 +1,73 @@
+name: Web platform CI
+
+on:
+  push:
+    paths:
+      - "web/**"
+      - ".github/workflows/web-platform.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web-platform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-platform-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Node 24 web validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: web
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check TypeScript
+        run: npm run typecheck
+
+      - name: Run unit and database policy tests
+        run: npm test
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      # Each integration runner creates and removes its own PostgreSQL cluster
+      # with random test credentials and explicitly disables live AI providers.
+      - name: Run browser and HTTP integration tests
+        run: npm run test:e2e
+
+      # This checks the built app's HTTPS-origin, proxy and cookie policies over
+      # private loopback HTTP; it does not validate a public TLS deployment.
+      - name: Run production-mode integration tests
+        run: npm run test:production
